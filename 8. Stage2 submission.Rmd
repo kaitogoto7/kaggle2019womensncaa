@@ -1,0 +1,578 @@
+---
+title: "8. Stage2 submission"
+output: html_document
+---
+
+--------------------PROCESS IT--------------------
+
+```{r}
+sample.submission <- read.csv("./womens-machine-learning-competition-2019/WSampleSubmissionStage2.csv") #UPDATED for 2019
+year.team1.team2 <- c()
+for(i in 1:nrow(sample.submission)){
+  year.team1.team2 <- rbind(year.team1.team2, strsplit(as.character(sample.submission$ID[i]), "_")[[1]])
+}
+year.team1.team2 <- matrix(as.integer(year.team1.team2), ncol = 3)
+head(year.team1.team2)
+nrow(year.team1.team2)
+```
+
+STEP ONE:
+
+Compute Seeds for both teams on each row of year.team1.team2
+
+```{r}
+seeds.df <- read.csv("./womens-machine-learning-competition-2019/Stage2WDataFiles/WNCAATourneySeeds.csv") #UPDATED for 2019
+seeds.df <- seeds.df[seeds.df$Season == 2019,] #UPDATED for 2019
+str(seeds.df)
+
+team1.seeds <- c()
+team2.seeds <- c()
+
+for(i in 1:nrow(year.team1.team2)){
+  curr.year.team1.team2 <- year.team1.team2[i,]
+  
+  #Find seed of team1 going into tournament
+  seeds.df.year <- seeds.df #UPDATED for 2019
+  seeds.df.year.team1 <- seeds.df.year[seeds.df.year$TeamID == curr.year.team1.team2[2],]
+  team1.seed <- as.character(tail(seeds.df.year.team1$Seed, 1))
+  team1.seed <- as.integer(substr(team1.seed,2,3))
+  team1.seeds <- c(team1.seeds, team1.seed)
+  
+  #Find seed of team2 going into tournament
+  seeds.df.year.team2 <- seeds.df.year[seeds.df.year$TeamID == curr.year.team1.team2[3],]
+  team2.seed <- as.character(tail(seeds.df.year.team2$Seed, 1))
+  team2.seed <- as.integer(substr(team2.seed,2,3))
+  team2.seeds <- c(team2.seeds, team2.seed)
+  
+}
+
+str(team1.seeds)
+str(team2.seeds)
+```
+
+STEP TWO:
+
+Compute AdjWinPct for both teams on each row of year.team1.team2
+
+```{r}
+regular.df <- read.csv("./womens-machine-learning-competition-2019/Stage2WDataFiles/WRegularSeasonDetailedResults.csv") #UPDATED for 2019
+str(regular.df)
+```
+
+```{r}
+calculate.adj.win.percentage <- function(teamID, regular.df){
+  
+  #neutral wins and losses
+  neutral.matches.df <- regular.df[as.character(regular.df$WLoc) == "N",]
+  neutral.wins <- sum(neutral.matches.df$WTeamID == teamID)
+  neutral.losses <- sum(neutral.matches.df$LTeamID == teamID)
+  
+  #home and away wins
+  win.matches <- regular.df[regular.df$WTeamID == teamID,]
+  away.wins <- sum(as.character(win.matches$WLoc) == "A")
+  home.wins <- sum(as.character(win.matches$WLoc) == "H")
+  
+  #home and away losses
+  loss.matches <- regular.df[regular.df$LTeamID == teamID,]
+  home.losses <- sum(as.character(loss.matches$WLoc) == "A")
+  away.losses <- sum(as.character(loss.matches$WLoc) == "H")
+  
+  #weight the values up
+  away.wins <- away.wins*1.4
+  home.wins <- home.wins*0.6
+  home.losses <- home.losses*1.4
+  away.losses <- away.losses*0.6
+  
+  adj.win.pctg <- (neutral.wins+away.wins+home.wins)/(neutral.wins+away.wins+home.wins+neutral.losses+away.losses+home.losses)
+  return(adj.win.pctg)
+}
+```
+
+```{r}
+#UPDATED for 2019 (tourney.df2 not required)
+#tourney.df2 <- readRDS("tourney.df2.rds") 
+#str(tourney.df2)
+
+wteam.round1.adj.win.percentage <- c()
+lteam.round1.adj.win.percentage <- c()
+
+for(i in 1:nrow(year.team1.team2)){
+  
+  curr.year.team1.team2 <- year.team1.team2[i,]
+  tournament.match.year <- curr.year.team1.team2[1]
+  tournament.match.wteam <- curr.year.team1.team2[2] #team1 is considered as wteam for the code
+  tournament.match.lteam <- curr.year.team1.team2[3] #team2 is considered as lteam for the code
+  
+  #subset regular.df into the year of tournament match
+  regular.df.year <- regular.df[regular.df$Season == tournament.match.year,]
+  
+  #subset regular.df.year into matches between march madness teams
+
+  #tourney.df2.year <- tourney.df2[tourney.df2$Season == tournament.match.year,]
+  #march.madness.teams <- unique(c(tourney.df2.year$WTeamID,tourney.df2.year$LTeamID))
+  
+  #UPDATED for 2019
+  march.madness.teams <- unique(c(year.team1.team2[,2], year.team1.team2[,3]))
+
+  regular.df.year.march.teams <- regular.df.year[which(c(regular.df.year$WTeamID %in% march.madness.teams) & c(regular.df.year$LTeamID %in% march.madness.teams)),]
+  
+  #calculate adj.win.wteam
+  wteam.regular.df.year.march.teams <- regular.df.year.march.teams[c(c(regular.df.year.march.teams$WTeamID == tournament.match.wteam) | c(regular.df.year.march.teams$LTeamID == tournament.match.wteam)),]
+
+  adj.win.wteam <- calculate.adj.win.percentage(tournament.match.wteam, wteam.regular.df.year.march.teams)
+  wteam.round1.adj.win.percentage <- c(wteam.round1.adj.win.percentage, adj.win.wteam)
+  
+  #calculate adj.win.lteam
+  lteam.regular.df.year.march.teams <- regular.df.year.march.teams[c(regular.df.year.march.teams$WTeamID == tournament.match.lteam) | c(regular.df.year.march.teams$LTeamID == tournament.match.lteam),]
+
+  adj.win.lteam <- calculate.adj.win.percentage(tournament.match.lteam, lteam.regular.df.year.march.teams)
+  lteam.round1.adj.win.percentage <- c(lteam.round1.adj.win.percentage, adj.win.lteam)
+}
+
+wteam.round1.adj.win.percentage <- replace(wteam.round1.adj.win.percentage, which(is.nan(wteam.round1.adj.win.percentage)), 0)
+
+lteam.round1.adj.win.percentage <- replace(lteam.round1.adj.win.percentage, which(is.nan(lteam.round1.adj.win.percentage)), 0)
+
+unique(wteam.round1.adj.win.percentage)
+unique(lteam.round1.adj.win.percentage)
+```
+
+STEP THREE:
+
+Compute NetEff for both teams on each row of year.team1.team2
+
+```{r}
+#Function: for a given year and teamID, return the relevant INDEXES and winning team y/n vector on regular.df
+
+year.teamID.into.indexes <- function(year, teamID, regular.df){
+  
+  indexes <- which(regular.df$Season == year & regular.df$WTeamID == teamID | regular.df$Season == year & regular.df$LTeamID == teamID)
+  
+  wins <- which(regular.df$Season == year & regular.df$WTeamID == teamID)
+  
+  winner.logical <- indexes %in% wins
+  
+  return(cbind(indexes, winner.logical))
+}
+```
+
+```{r}
+#Function: for a given set of rows (using the INDEXES and winning team y/n) on regular.df, return the average Net Efficiency
+
+indexes.for.regular.into.neteff <- function(indexes, winner.logical, regular.df, year, year.team1.team2){
+  
+  relevant.regular.matches.df <- regular.df[indexes,]
+  
+  #find teamID of all teams that reached this particular year's march madness
+  #tourney.df3.year <- tourney.df3[tourney.df3$Season == year,]
+  #march.madness.teams <- unique(c(tourney.df3.year$WTeamID, tourney.df3.year$LTeamID))
+  
+  #UPDATED for 2019
+  march.madness.teams <- unique(c(year.team1.team2[,2], year.team1.team2[,3]))
+  
+  #subset relevant.regular.matches.df into matches against teams that reached march madness
+  march.madness.indexes <- which(c(relevant.regular.matches.df$WTeamID %in% march.madness.teams) & c(relevant.regular.matches.df$LTeamID %in% march.madness.teams))
+  winner.logical <- winner.logical[march.madness.indexes]
+  relevant.regular.matches.df <- relevant.regular.matches.df[march.madness.indexes,]
+  
+  #Compute offensive efficiency
+  fga <- c()
+  offr <- c()
+  turno <- c()
+  fta <- c()
+  score <- c()
+  
+  if(length(march.madness.indexes) == 0){#if a tam didin't play any March Madness teams during regular season
+    return(-1)
+  }else{
+    for(i in 1:nrow(relevant.regular.matches.df)){
+      regular.match <- relevant.regular.matches.df[i,]
+      if(winner.logical[i]){#if winner of regular.match
+        fga <- c(fga, regular.match$WFGA)
+        offr <- c(offr, regular.match$WOR)
+        turno <- c(turno, regular.match$WTO)
+        fta <- c(fta, regular.match$WFTA)
+        score <- c(score, regular.match$WScore)
+      }else{#if loser of regular.match
+        fga <- c(fga, regular.match$LFGA)
+        offr <- c(offr, regular.match$LOR)
+        turno <- c(turno, regular.match$LTO)
+        fta <- c(fta, regular.match$LFTA)
+        score <- c(score, regular.match$LScore)
+      }
+    }
+    
+    fga <- mean(fga)
+    offr <- mean(offr)
+    turno <- mean(turno)
+    fta <- mean(fta)
+    score <- mean(score)
+    
+    total.posession <- fga - offr + turno + (fta*.475)
+    off.eff <- score / total.posession
+    
+    #Compute defensive efficiency
+    fga <- c()
+    offr <- c()
+    turno <- c()
+    fta <- c()
+    score <- c()
+    
+    for(i in 1:nrow(relevant.regular.matches.df)){
+      regular.match <- relevant.regular.matches.df[i,]
+      if(winner.logical[i]){#if winner of regular.match
+        fga <- c(fga, regular.match$LFGA)
+        offr <- c(offr, regular.match$LOR)
+        turno <- c(turno, regular.match$LTO)
+        fta <- c(fta, regular.match$LFTA)
+        score <- c(score, regular.match$LScore)
+      }else{#if loser of regular.match
+        fga <- c(fga, regular.match$WFGA)
+        offr <- c(offr, regular.match$WOR)
+        turno <- c(turno, regular.match$WTO)
+        fta <- c(fta, regular.match$WFTA)
+        score <- c(score, regular.match$WScore)
+      }
+    }
+    
+    fga <- mean(fga)
+    offr <- mean(offr)
+    turno <- mean(turno)
+    fta <- mean(fta)
+    score <- mean(score)
+    
+    def.possesion <- fga - offr + turno + (fta*.475)
+    def.eff <- score / def.possesion
+    
+    #Compute net efficiency
+    net.eff <- off.eff - def.eff
+    return(net.eff)
+  }
+}
+```
+
+```{r}
+wteam.efficiency <- c()
+lteam.efficiency <- c()
+
+for(i in 1:nrow(year.team1.team2)){
+  
+  year <- year.team1.team2[i,1]
+  team1ID <- year.team1.team2[i,2]
+  team2ID <- year.team1.team2[i,3]
+  
+  team1.indexes.logical <- year.teamID.into.indexes(year, team1ID, regular.df)
+  team2.indexes.logical <- year.teamID.into.indexes(year, team2ID, regular.df)
+  
+  team1.net.eff <- indexes.for.regular.into.neteff(team1.indexes.logical[,1], team1.indexes.logical[,2], regular.df, year, year.team1.team2)
+  team2.net.eff <- indexes.for.regular.into.neteff(team2.indexes.logical[,1], team2.indexes.logical[,2], regular.df, year, year.team1.team2)
+  
+  wteam.efficiency <- c(wteam.efficiency, team1.net.eff)
+  lteam.efficiency <- c(lteam.efficiency, team2.net.eff)
+  
+}
+
+unique(wteam.efficiency)
+unique(lteam.efficiency)
+```
+
+STEP FOUR:
+
+Compute Form for both teams on each row of year.team1.team2
+
+ALSO
+
+Using the latest tourney.df, for each row of year.team1.team2, return 1 if team1 had home advantage and -1 if team2 had home advantage.
+
+```{r}
+#Function: for a given seed (such as "W01"), return the sequence of the strongest seeds a team can clash against during its road to the championship crown
+
+opponent.seed.sequence <- function(seed){
+  
+  seed <- as.integer(substr(seed, 2, 3))
+  
+  seed.sequence <- c(17-seed) #round 1 is obvious
+  if(seed.sequence >= 10){
+    seed.sequence <- as.character(seed.sequence)
+  }else{
+    seed.sequence <- paste0("0", seed.sequence)
+  }
+  
+  ncaa.brackets <- c(1, 16, 8, 9, 5, 12, 4, 13, 6, 11, 3, 14, 7, 10, 2, 15)
+  seed.pos <- which(ncaa.brackets == seed)
+  #ROUND 2 START##########################
+  if(ceiling(seed.pos / 4) == 1){ #first quarter of 16
+    if(seed != 1){
+      seed.sequence <- c(seed.sequence, "01")
+    }else{
+      seed.sequence <- c(seed.sequence, "08")
+    }
+  }
+  else if(ceiling(seed.pos / 4) == 2){ #second quarter of 16
+    if(seed != 4){
+      seed.sequence <- c(seed.sequence, "04")
+    }else{
+      seed.sequence <- c(seed.sequence, "05")
+    }
+  }
+  else if(ceiling(seed.pos / 4) == 3){ #third quarter of 16
+    if(seed != 3){
+      seed.sequence <- c(seed.sequence, "03")
+    }else{
+      seed.sequence <- c(seed.sequence, "06")
+    }
+  }
+  else{#fourth quarter of 16
+    if(seed != 2){
+      seed.sequence <- c(seed.sequence, "02")
+    }else{
+      seed.sequence <- c(seed.sequence, "07")
+    }
+  }
+  #ROUND 2 END##########################
+  #ROUND 3 START##########################
+  if(ceiling(seed.pos / 8) == 1){ #first half of 16
+    if(seed != 1){
+      seed.sequence <- c(seed.sequence, "01")
+    }else{
+      seed.sequence <- c(seed.sequence, "04")
+    }
+  }
+  else{#second half of 16
+    if(seed != 2){
+      seed.sequence <- c(seed.sequence, "02")
+    }else{
+      seed.sequence <- c(seed.sequence, "03")
+    }
+  }
+  #ROUND 3 END##########################
+  #ROUND 4, 5 START##########################
+  if(seed != 1){
+    seed.sequence <- c(seed.sequence, "01", "01", "01")
+  }else{
+    seed.sequence <- c(seed.sequence, "02", "01", "01")
+  }
+  #ROUND 4, 5 END##########################
+  
+  return(as.integer(seed.sequence)) #TWEAK to the copy and pasted code
+  
+  #ROUND 6 is not required because no match will have this round as the previous round
+}
+```
+
+```{r}
+#Function: for a given pair of seeds, return the round they clash
+
+round.they.clash <- function(seed1, seed2){
+  
+  region.seed1 <- substr(seed1, 1, 1)
+  rank.seed1 <- as.integer(substr(seed1, 2, 3))
+  
+  region.seed2 <- substr(seed2, 1, 1)
+  rank.seed2 <- as.integer(substr(seed2, 2, 3))
+  
+  if(region.seed1 != region.seed2){ #different region
+    
+    if(region.seed1 %in% c("W","X")){
+      if(region.seed2 %in% c("W","X")){
+        return(5)
+      }
+    }else{
+      return(6)
+    }
+    
+    if(region.seed1 %in% c("Y","Z")){
+      if(region.seed2 %in% c("Y","Z")){
+        return(5)
+      }
+    }else{
+      return(6)
+    }
+    
+  }else{ #same region
+    ncaa.brackets <- c(1, 16, 8, 9, 5, 12, 4, 13, 6, 11, 3, 14, 7, 10, 2, 15)
+    seed1.bracket <- which(ncaa.brackets == rank.seed1)
+    seed2.bracket <- which(ncaa.brackets == rank.seed2)
+    
+    if(ceiling(seed1.bracket/2) == ceiling(seed2.bracket/2)){
+      return(1)
+    }else if(ceiling(seed1.bracket/4) == ceiling(seed2.bracket/4)){
+      return(2)
+    }else if(ceiling(seed1.bracket/8) == ceiling(seed2.bracket/8)){
+      return(3)
+    }else{
+      return(4)
+    }
+    
+  }
+  
+}
+```
+
+```{r}
+team1.forms <- c()
+team2.forms <- c()
+home.advantages <- c()
+
+for(i in 1:nrow(year.team1.team2)){
+  
+  year <- year.team1.team2[i,1]
+  team1ID <- year.team1.team2[i,2]
+  team2ID <- year.team1.team2[i,3]
+  
+  team1.seed <- as.character(seeds.df[which(seeds.df[,3] == team1ID),2])
+  team2.seed <- as.character(seeds.df[which(seeds.df[,3] == team2ID),2])
+  
+  team1.opp.seq <- opponent.seed.sequence(team1.seed)
+  team2.opp.seq <- opponent.seed.sequence(team2.seed)
+  
+  round.they.clash.output <- round.they.clash(team1.seed, team2.seed)
+    
+  #Append the strongest seed team1 and team2 could have faced in previous round to team1.forms and team2.forms respectively
+  
+  if(round.they.clash.output == 1){
+    team1.form <- 16
+    team2.form <- 16
+  }else{
+    team1.form <- team1.opp.seq[round.they.clash.output-1]
+    team2.form <- team2.opp.seq[round.they.clash.output-1]
+  }
+    
+  team1.forms <- c(team1.forms, team1.form)
+  team2.forms <- c(team2.forms, team2.form)
+}
+
+unique(team1.forms)
+unique(team2.forms)
+```
+
+Home Advantage logic:
+
+The 1st, 2nd, 3rd and 4th seeds get home advantages for first two rounds.
+
+```{r}
+home.advantages <- rep(0, 2016)
+
+for(i in 1:nrow(year.team1.team2)){
+  
+  team1ID <- year.team1.team2[i,2]
+  team2ID <- year.team1.team2[i,3]
+  
+  team1.seed <- as.character(seeds.df[which(seeds.df[,3] == team1ID),2])
+  team2.seed <- as.character(seeds.df[which(seeds.df[,3] == team2ID),2])
+  
+  round.they.clash.output <- round.they.clash(team1.seed, team2.seed)
+  
+  if(round.they.clash.output <= 2){
+    if(as.integer(substr(team1.seed, 2, 3)) <= 4){
+      home.advantages[i] <- 1
+    }else if(as.integer(substr(team2.seed, 2, 3)) <= 4){
+      home.advantages[i] <- -1
+    }
+  }
+  
+}
+
+table(home.advantages)
+```
+
+```{r}
+year.team1.team2.v2 <- cbind.data.frame(year.team1.team2, team1.seeds, team2.seeds, wteam.round1.adj.win.percentage, lteam.round1.adj.win.percentage, wteam.efficiency, lteam.efficiency, team1.forms, team2.forms, home.advantages)
+str(year.team1.team2.v2)
+```
+
+--------------------MODEL IT--------------------
+
+```{r}
+#parameter <- 10 #the score was .45454
+parameter <- 5 #the score was .44318
+#parameter <- 2 #the score was .46505
+#parameter <- 4 #the score was .46845
+#parameter <- 6 #the score was .46369
+library(caret)
+library(gbm)
+control <- trainControl(method = "CV", number = parameter)
+set.seed(19101996)
+```
+
+```{r}
+#subset results.metrics.df into matches played during 2013 or prior
+results.metrics.df <- readRDS("results.metrics.df.rds")
+str(results.metrics.df)
+
+#tourney.df5 <- readRDS("tourney.df5.rds")
+#str(tourney.df5)
+#prior.2013.indexes <- which(tourney.df5$Season <= 2013)
+#train.results.metrics.df <- results.metrics.df[c(prior.2013.indexes, (prior.2013.indexes+567)),]
+
+#UPDATED for 2019
+train.results.metrics.df <- results.metrics.df
+train.results.metrics.df$results <- as.factor(train.results.metrics.df$results)
+str(train.results.metrics.df)
+```
+
+```{r}
+#Perform Stochastic Gradient Boosting
+library(e1071)
+gbm.train <- train(results ~ home.advantage + seed.ratio.log + form.ratio.log + adjwinp.difference + efficiency.difference, data = train.results.metrics.df, method = "gbm", trControl = control)
+gbm.train
+train.results.metrics.df$results <- as.logical(train.results.metrics.df$results)
+str(train.results.metrics.df)
+```
+
+```{r}
+#gbm <- gbm(results ~ home.advantage + seed.ratio.log + form.ratio.log + adjwinp.difference + efficiency.difference, distribution = "bernoulli", data = train.results.metrics.df, n.trees = 50, interaction.depth = 2, shrinkage = 0.1, n.minobsinnode = 10) #the score was .45454
+gbm <- gbm(results ~ home.advantage + seed.ratio.log + form.ratio.log + adjwinp.difference + efficiency.difference, distribution = "bernoulli", data = train.results.metrics.df, n.trees = 50, interaction.depth = 1, shrinkage = 0.1, n.minobsinnode = 10) #the score was .44318
+#gbm <- gbm(results ~ home.advantage + seed.ratio.log + form.ratio.log + adjwinp.difference + efficiency.difference, distribution = "bernoulli", data = train.results.metrics.df, n.trees = 50, interaction.depth = 1, shrinkage = 0.1, n.minobsinnode = 10) #the score was .46505
+#gbm <- gbm(results ~ home.advantage + seed.ratio.log + form.ratio.log + adjwinp.difference + efficiency.difference, distribution = "bernoulli", data = train.results.metrics.df, n.trees = 50, interaction.depth = 1, shrinkage = 0.1, n.minobsinnode = 10) #the score was .46845
+#gbm <- gbm(results ~ home.advantage + seed.ratio.log + form.ratio.log + adjwinp.difference + efficiency.difference, distribution = "bernoulli", data = train.results.metrics.df, n.trees = 50, interaction.depth = 1, shrinkage = 0.1, n.minobsinnode = 10) #the score was .46369
+```
+
+Manipulate year.team1.team2.v2 into same structure as train.results.metrics.df
+
+```{r}
+str(year.team1.team2.v2)
+
+#home.advantage
+home.advantage <- year.team1.team2.v2$home.advantages
+
+#seed.ratio.log (+1 before log)
+seed.ratio.log <- log((year.team1.team2.v2$team1.seeds / year.team1.team2.v2$team2.seeds)+1)
+
+#form.ratio.log (+1 before log)
+form.ratio.log <- log((year.team1.team2.v2$team1.forms / year.team1.team2.v2$team2.forms)+1)
+
+#adjwinp.difference
+adjwinp.difference <- year.team1.team2.v2$wteam.round1.adj.win.percentage - year.team1.team2.v2$lteam.round1.adj.win.percentage
+
+#efficiency.difference
+efficiency.difference <- year.team1.team2.v2$wteam.efficiency - year.team1.team2.v2$lteam.efficiency
+
+#merge all metrics together
+test.results.metrics.df <- cbind.data.frame(home.advantage, seed.ratio.log, form.ratio.log, adjwinp.difference, efficiency.difference)
+```
+
+--------------------SUBMIT IT--------------------
+
+```{r}
+#Create the predictions
+#predictions <- predict(gbm, newdata = test.results.metrics.df, type = "response", n.trees = 50) #the score was .45454
+#Create the predictions
+predictions <- predict(gbm, newdata = test.results.metrics.df, type = "response", n.trees = 50) #the score was .44318
+#predictions <- predict(gbm, newdata = test.results.metrics.df, type = "response", n.trees = 50) #the score was .46505
+#predictions <- predict(gbm, newdata = test.results.metrics.df, type = "response", n.trees = 50) #the score was .46845
+#predictions <- predict(gbm, newdata = test.results.metrics.df, type = "response", n.trees = 50) #the score was .46369
+
+#Probability clipping
+#0.001, 0.005, .01 and .025 scored .44318
+#.05 scored .44638
+lower <- .025
+upper <- .975
+predictions <- pmax(lower, predictions)
+predictions <- pmin(upper, predictions)
+
+sample.submission <- read.csv("./womens-machine-learning-competition-2019/WSampleSubmissionStage2.csv") #UPDATED for 2019
+submission.df <- data.frame(sample.submission$ID, predictions)
+colnames(submission.df) <- c("id", "pred")
+write.csv(submission.df, paste0("gradientBoost", parameter, lower, ".csv"), row.names = FALSE)
+```
