@@ -5,6 +5,8 @@ https://www.kaggle.com/c/womens-machine-learning-competition-2019/data
 
 "results.metrics.df.rds" can be created by running the four process files in order from "1." to "4."
 
+"gradientBoost50.025.csv" (the competition submission file) can be created by running "8. Stage2 submission.Rmd"
+
 # Glossary of metrics:
 
 Seeding: Each team is seeded from 1 to 16 (generally from strongest to weakest) by the NCAA.
