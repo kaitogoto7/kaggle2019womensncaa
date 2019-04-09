@@ -7,6 +7,8 @@ https://www.kaggle.com/c/womens-machine-learning-competition-2019/data
 
 "gradientBoost50.025.csv" (the competition submission file) can be created by running "8. Stage2 submission.Rmd"
 
+I assumed that all 1st, 2nd and 3rd seed teams will win their first round match because my probabilities are clipped from 0.025 to 0.975 and teams seeded from 1 to 3 has won their first round match 299 out of the last 300 historical matches (i.e. much greater than 0.975 of the time).
+
 # Glossary of metrics:
 
 Seeding: Each team is seeded from 1 to 16 (generally from strongest to weakest) by the NCAA.
