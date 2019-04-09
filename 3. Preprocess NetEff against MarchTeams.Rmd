@@ -1,0 +1,172 @@
+---
+title: "Untitled"
+output: html_document
+---
+
+Copy, Paste and Tweak appropriate code from Mens comp
+
+```{r}
+regular.df <- read.csv("./womens-machine-learning-competition-2019/WDataFiles/WRegularSeasonDetailedResults.csv")
+str(regular.df)
+
+tourney.df3 <- readRDS("tourney.df3.rds")
+str(tourney.df3)
+```
+
+```{r}
+#Function: for a given year and teamID, return the relevant INDEXES and winning team y/n vector on regular.df
+
+year.teamID.into.indexes <- function(year, teamID, regular.df){
+  
+  indexes <- which(regular.df$Season == year & regular.df$WTeamID == teamID | regular.df$Season == year & regular.df$LTeamID == teamID)
+  
+  wins <- which(regular.df$Season == year & regular.df$WTeamID == teamID)
+  
+  winner.logical <- indexes %in% wins
+  
+  return(cbind(indexes, winner.logical))
+}
+```
+
+Net Efficiency definition:
+
+Net Efficiency = Offensive Efficiency - Defensive Efficiency
+
+Offensive Efficiency = Total Points/Total Possesion
+
+Total Possesion = Field Goal Attempts - Offensive Rebounds + Turnovers + .475*Free Throw Attempts
+
+Same logic for defensive efficiency
+
+WFGA is field goal attempts by winning team
+
+WOR is offensive rebounds by winning team
+
+WTO is turnovers COMMITTED (Google meaning of this) by winning team
+
+WFTA is free throw attemps by winning team
+
+```{r}
+#Function: for a given set of rows (using the INDEXES and winning team y/n) on regular.df, return the average Net Efficiency
+
+indexes.for.regular.into.neteff <- function(indexes, winner.logical, regular.df, year, tourney.df3){
+  
+  relevant.regular.matches.df <- regular.df[indexes,]
+  
+  #find teamID of all teams that reached this particular year's march madness
+  tourney.df3.year <- tourney.df3[tourney.df3$Season == year,]
+  march.madness.teams <- unique(c(tourney.df3.year$WTeamID, tourney.df3.year$LTeamID))
+  
+  #subset relevant.regular.matches.df into matches against teams that reached march madness
+  march.madness.indexes <- which(c(relevant.regular.matches.df$WTeamID %in% march.madness.teams) & c(relevant.regular.matches.df$LTeamID %in% march.madness.teams))
+  winner.logical <- winner.logical[march.madness.indexes]
+  relevant.regular.matches.df <- relevant.regular.matches.df[march.madness.indexes,]
+  
+  #Compute offensive efficiency
+  fga <- c()
+  offr <- c()
+  turno <- c()
+  fta <- c()
+  score <- c()
+  
+  if(length(march.madness.indexes) == 0){#if a tam didin't play any March Madness teams during regular season
+    return(-1)
+  }else{
+    for(i in 1:nrow(relevant.regular.matches.df)){
+      regular.match <- relevant.regular.matches.df[i,]
+      if(winner.logical[i]){#if winner of regular.match
+        fga <- c(fga, regular.match$WFGA)
+        offr <- c(offr, regular.match$WOR)
+        turno <- c(turno, regular.match$WTO)
+        fta <- c(fta, regular.match$WFTA)
+        score <- c(score, regular.match$WScore)
+      }else{#if loser of regular.match
+        fga <- c(fga, regular.match$LFGA)
+        offr <- c(offr, regular.match$LOR)
+        turno <- c(turno, regular.match$LTO)
+        fta <- c(fta, regular.match$LFTA)
+        score <- c(score, regular.match$LScore)
+      }
+    }
+    
+    fga <- mean(fga)
+    offr <- mean(offr)
+    turno <- mean(turno)
+    fta <- mean(fta)
+    score <- mean(score)
+    
+    total.posession <- fga - offr + turno + (fta*.475)
+    off.eff <- score / total.posession
+    
+    #Compute defensive efficiency
+    fga <- c()
+    offr <- c()
+    turno <- c()
+    fta <- c()
+    score <- c()
+    
+    for(i in 1:nrow(relevant.regular.matches.df)){
+      regular.match <- relevant.regular.matches.df[i,]
+      if(winner.logical[i]){#if winner of regular.match
+        fga <- c(fga, regular.match$LFGA)
+        offr <- c(offr, regular.match$LOR)
+        turno <- c(turno, regular.match$LTO)
+        fta <- c(fta, regular.match$LFTA)
+        score <- c(score, regular.match$LScore)
+      }else{#if loser of regular.match
+        fga <- c(fga, regular.match$WFGA)
+        offr <- c(offr, regular.match$WOR)
+        turno <- c(turno, regular.match$WTO)
+        fta <- c(fta, regular.match$WFTA)
+        score <- c(score, regular.match$WScore)
+      }
+    }
+    
+    fga <- mean(fga)
+    offr <- mean(offr)
+    turno <- mean(turno)
+    fta <- mean(fta)
+    score <- mean(score)
+    
+    def.possesion <- fga - offr + turno + (fta*.475)
+    def.eff <- score / def.possesion
+    
+    #Compute net efficiency
+    net.eff <- off.eff - def.eff
+    return(net.eff)
+  }
+}
+```
+
+```{r}
+#Create wteam.efficiency and lteam.efficiency using the TeamID (W and L TeamID) and Season data from tourney.df to find the appropriate indexes to insert each average Net Efficiency computed
+
+wteam.efficiency <- c()
+lteam.efficiency <- c()
+
+for(i in 1:nrow(tourney.df3)){
+  tourney.match <- tourney.df3[i,]
+  year <- tourney.match$Season
+  team1ID <- tourney.match$WTeamID
+  team2ID <- tourney.match$LTeamID
+  
+  team1.indexes.logical <- year.teamID.into.indexes(year, team1ID, regular.df)
+  team2.indexes.logical <- year.teamID.into.indexes(year, team2ID, regular.df)
+  
+  team1.net.eff <- indexes.for.regular.into.neteff(team1.indexes.logical[,1], team1.indexes.logical[,2], regular.df, year, tourney.df3)
+  team2.net.eff <- indexes.for.regular.into.neteff(team2.indexes.logical[,1], team2.indexes.logical[,2], regular.df, year, tourney.df3)
+  
+  wteam.efficiency <- c(wteam.efficiency, team1.net.eff)
+  lteam.efficiency <- c(lteam.efficiency, team2.net.eff)
+}
+
+length(unique(lteam.efficiency))
+nrow(tourney.df3)
+#should be same lengths because when a team with a certain net efficiency loses, that team will never play again.
+```
+
+```{r}
+tourney.df4 <- cbind.data.frame(tourney.df3, wteam.efficiency, lteam.efficiency)
+str(tourney.df4)
+saveRDS(tourney.df4, "tourney.df4.rds")
+```

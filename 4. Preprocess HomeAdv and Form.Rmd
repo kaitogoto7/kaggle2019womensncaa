@@ -1,0 +1,284 @@
+---
+title: "Untitled"
+output: html_document
+---
+
+```{r}
+tourney.df4 <- readRDS("tourney.df4.rds")
+str(tourney.df4)
+```
+
+Change WLoc into 1 for Home, 0 for Neutral and -1 for Away
+
+```{r}
+location <- as.integer(tourney.df4$WLoc)
+location[location == 1] <- -1
+location[location == 2] <- 1
+location[location == 3] <- 0
+
+tourney.df4$WLoc <- location
+str(tourney.df4)
+```
+
+To compute the form metric, mainly Copy, Paste and Tweak appropriate code from Mens comp.
+
+```{r}
+#Function: for a given seed (such as "W01"), return the sequence of the strongest seeds a team can clash against during its road to the championship crown
+
+opponent.seed.sequence <- function(seed){
+  
+  seed.sequence <- c(17-seed) #round 1 is obvious
+  if(seed.sequence >= 10){
+    seed.sequence <- as.character(seed.sequence)
+  }else{
+    seed.sequence <- paste0("0", seed.sequence)
+  }
+  
+  ncaa.brackets <- c(1, 16, 8, 9, 5, 12, 4, 13, 6, 11, 3, 14, 7, 10, 2, 15)
+  seed.pos <- which(ncaa.brackets == seed)
+  #ROUND 2 START##########################
+  if(ceiling(seed.pos / 4) == 1){ #first quarter of 16
+    if(seed != 1){
+      seed.sequence <- c(seed.sequence, "01")
+    }else{
+      seed.sequence <- c(seed.sequence, "08")
+    }
+  }
+  else if(ceiling(seed.pos / 4) == 2){ #second quarter of 16
+    if(seed != 4){
+      seed.sequence <- c(seed.sequence, "04")
+    }else{
+      seed.sequence <- c(seed.sequence, "05")
+    }
+  }
+  else if(ceiling(seed.pos / 4) == 3){ #third quarter of 16
+    if(seed != 3){
+      seed.sequence <- c(seed.sequence, "03")
+    }else{
+      seed.sequence <- c(seed.sequence, "06")
+    }
+  }
+  else{#fourth quarter of 16
+    if(seed != 2){
+      seed.sequence <- c(seed.sequence, "02")
+    }else{
+      seed.sequence <- c(seed.sequence, "07")
+    }
+  }
+  #ROUND 2 END##########################
+  #ROUND 3 START##########################
+  if(ceiling(seed.pos / 8) == 1){ #first half of 16
+    if(seed != 1){
+      seed.sequence <- c(seed.sequence, "01")
+    }else{
+      seed.sequence <- c(seed.sequence, "04")
+    }
+  }
+  else{#second half of 16
+    if(seed != 2){
+      seed.sequence <- c(seed.sequence, "02")
+    }else{
+      seed.sequence <- c(seed.sequence, "03")
+    }
+  }
+  #ROUND 3 END##########################
+  #ROUND 4, 5 START##########################
+  if(seed != 1){
+    seed.sequence <- c(seed.sequence, "01", "01", "01")
+  }else{
+    seed.sequence <- c(seed.sequence, "02", "01", "01")
+  }
+  #ROUND 4, 5 END##########################
+  
+  return(as.integer(seed.sequence)) #TWEAK to the copy and pasted code
+  
+  #ROUND 6 is not required because no match will have this round as the previous round
+}
+```
+
+Use the function above to return the strongest possible opponent wteam and lteam beat in the previous round.
+
+The function above returns the sequence of strongest possible opponents.
+
+```{r}
+#Create round.they.clash
+
+round.they.clash <- c()
+
+for(i in 1:nrow(tourney.df4)){
+  
+  row <- tourney.df4[i,]
+  day <- row$DayNum
+  
+  if(row$Season >= 2017){
+    if(day <= 138){
+      round.they.clash <- c(round.they.clash, 1) #round of 68 counts as round1
+    }else if(day <= 140){
+      round.they.clash <- c(round.they.clash, 2)
+    }else if(day <= 145){
+      round.they.clash <- c(round.they.clash, 3)
+    }else if(day <= 147){
+      round.they.clash <- c(round.they.clash, 4)
+    }else if(day == 151){
+      round.they.clash <- c(round.they.clash, 5)
+    }else{
+      round.they.clash <- c(round.they.clash, 6)
+    }
+  }else if (row$Season >= 2015){
+      if(day <= 138){
+        round.they.clash <- c(round.they.clash, 1) #round of 68 counts as round1
+      }else if(day <= 140){
+        round.they.clash <- c(round.they.clash, 2)
+      }else if(day <= 145){
+        round.they.clash <- c(round.they.clash, 3)
+      }else if(day <= 147){
+        round.they.clash <- c(round.they.clash, 4)
+      }else if(day == 153){
+        round.they.clash <- c(round.they.clash, 5)
+      }else{
+        round.they.clash <- c(round.they.clash, 6)
+      }
+  }else{
+      if(day <= 139){
+        round.they.clash <- c(round.they.clash, 1) #round of 68 counts as round1
+      }else if(day <= 141){
+        round.they.clash <- c(round.they.clash, 2)
+      }else if(day <= 146){
+        round.they.clash <- c(round.they.clash, 3)
+      }else if(day <= 148){
+        round.they.clash <- c(round.they.clash, 4)
+      }else if(day == 153){
+        round.they.clash <- c(round.they.clash, 5)
+      }else{
+        round.they.clash <- c(round.they.clash, 6)
+      }
+  }
+  
+}
+```
+
+
+
+```{r}
+wteam.forms <- c()
+lteam.forms <- c()
+
+for(i in 1:nrow(tourney.df4)){
+  row <- tourney.df4[i,]
+  round <- round.they.clash[i]
+  
+  if(round == 1){
+    wteam.forms <- c(wteam.forms, 16)
+    lteam.forms <- c(lteam.forms, 16)
+  }else{
+    wteam.seed <- tourney.df4$wteam.seeds[i]
+    lteam.seed <- tourney.df4$lteam.seeds[i]
+    
+    wteam.form <- opponent.seed.sequence(wteam.seed)[round-1]
+    lteam.form <- opponent.seed.sequence(lteam.seed)[round-1]
+    
+    wteam.forms <- c(wteam.forms, wteam.form)
+    lteam.forms <- c(lteam.forms, lteam.form)
+  }
+}
+```
+
+```{r}
+tourney.df5 <- cbind.data.frame(tourney.df4, wteam.forms, lteam.forms)
+str(tourney.df5)
+saveRDS(tourney.df5, "tourney.df5.rds")
+```
+
+```{r}
+tourney.df5 <- readRDS("tourney.df5.rds")
+```
+
+```{r}
+#Home Advantage metric
+home.advantage <- tourney.df5$WLoc
+
+#Seed metric
+seed.difference <- tourney.df5$wteam.seeds - tourney.df5$lteam.seeds
+seed.difference.log <- log(seed.difference+16)
+seed.ratio <- tourney.df5$wteam.seeds / tourney.df5$lteam.seeds
+seed.ratio.log <- log(seed.ratio+1)
+
+#Form metric
+form.difference <- tourney.df5$wteam.forms - tourney.df5$lteam.forms
+form.difference.log <- log(form.difference+16)
+form.ratio <- tourney.df5$wteam.forms / tourney.df5$lteam.forms
+form.ratio.log <- log(form.ratio+1)
+
+#AdjustedWinP metric
+adjwinp.difference <- tourney.df5$wteam.round1.adj.win.percentage - tourney.df5$lteam.round1.adj.win.percentage
+adjwinp.difference.log <- log(adjwinp.difference+1)
+adjwinp.ratio <- tourney.df5$wteam.round1.adj.win.percentage / tourney.df5$lteam.round1.adj.win.percentage
+adjwinp.ratio.log <- log(adjwinp.ratio+1)
+
+#Efficiency metric
+efficiency.difference <- tourney.df5$wteam.efficiency - tourney.df5$lteam.efficiency
+efficiency.difference.log <- log(efficiency.difference+2)
+efficiency.ratio <- tourney.df5$wteam.efficiency / tourney.df5$lteam.efficiency
+efficiency.ratio.log <- log(efficiency.ratio+2)
+```
+
+```{r}
+#bind all metrics into one df
+metrics.df <- cbind.data.frame(
+  home.advantage, seed.difference, seed.difference.log, seed.ratio, seed.ratio.log, form.difference, form.difference.log, form.ratio, form.ratio.log, adjwinp.difference, adjwinp.difference.log, adjwinp.ratio, adjwinp.ratio.log, efficiency.difference, efficiency.difference.log, efficiency.ratio, efficiency.ratio.log
+)
+str(metrics.df)
+
+#metrics vector
+results <- c(rep(T, nrow(metrics.df)), rep(F, nrow(metrics.df)))
+```
+
+Create a dummy metrics.df and then merge so glm can be performed.
+
+```{r}
+#Home Advantage metric
+dummy.home.advantage <- tourney.df5$WLoc*-1
+
+#Seed metric
+dummy.seed.difference <- tourney.df5$lteam.seeds - tourney.df5$wteam.seeds
+dummy.seed.difference.log <- log(dummy.seed.difference+16)
+dummy.seed.ratio <- tourney.df5$lteam.seeds / tourney.df5$wteam.seeds
+dummy.seed.ratio.log <- log(dummy.seed.ratio+1)
+
+#Form metric
+dummy.form.difference <- tourney.df5$lteam.forms - tourney.df5$wteam.forms
+dummy.form.difference.log <- log(dummy.form.difference+16)
+dummy.form.ratio <- tourney.df5$lteam.forms / tourney.df5$wteam.forms
+dummy.form.ratio.log <- log(dummy.form.ratio+1)
+
+#AdjustedWinP metric
+dummy.adjwinp.difference <- tourney.df5$lteam.round1.adj.win.percentage - tourney.df5$wteam.round1.adj.win.percentage
+dummy.adjwinp.difference.log <- log(dummy.adjwinp.difference+1)
+dummy.adjwinp.ratio <- tourney.df5$lteam.round1.adj.win.percentage / tourney.df5$wteam.round1.adj.win.percentage
+dummy.adjwinp.ratio.log <- log(dummy.adjwinp.ratio+1)
+
+#Efficiency metric
+dummy.efficiency.difference <- tourney.df5$lteam.efficiency - tourney.df5$wteam.efficiency
+dummy.efficiency.difference.log <- log(dummy.efficiency.difference+2)
+dummy.efficiency.ratio <- tourney.df5$lteam.efficiency / tourney.df5$wteam.efficiency
+dummy.efficiency.ratio.log <- log(dummy.efficiency.ratio+2)
+```
+
+```{r}
+#bind all metrics into one df
+dummy.metrics.df <- cbind.data.frame(
+  dummy.home.advantage, dummy.seed.difference, dummy.seed.difference.log, dummy.seed.ratio, dummy.seed.ratio.log, dummy.form.difference, dummy.form.difference.log, dummy.form.ratio, dummy.form.ratio.log, dummy.adjwinp.difference, dummy.adjwinp.difference.log, dummy.adjwinp.ratio, dummy.adjwinp.ratio.log, dummy.efficiency.difference, dummy.efficiency.difference.log, dummy.efficiency.ratio, dummy.efficiency.ratio.log
+)
+colnames(dummy.metrics.df) <- c(
+  "home.advantage", "seed.difference", "seed.difference.log", "seed.ratio", "seed.ratio.log", "form.difference", "form.difference.log", "form.ratio", "form.ratio.log", "adjwinp.difference", "adjwinp.difference.log", "adjwinp.ratio", "adjwinp.ratio.log", "efficiency.difference", "efficiency.difference.log", "efficiency.ratio", "efficiency.ratio.log"
+)
+str(dummy.metrics.df)
+```
+
+Merge the two dataframes and the results vector together
+
+```{r}
+metrics.df <- rbind.data.frame(metrics.df, dummy.metrics.df)
+results.metrics.df <- cbind.data.frame(results, metrics.df)
+saveRDS(results.metrics.df, "results.metrics.df.rds")
+```

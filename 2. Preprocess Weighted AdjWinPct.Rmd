@@ -1,0 +1,164 @@
+---
+title: "Untitled"
+output: html_document
+---
+
+```{r}
+regular.df <- read.csv("./womens-machine-learning-competition-2019/WDataFiles/WRegularSeasonDetailedResults.csv")
+str(regular.df)
+
+tourney.df2 <- readRDS("tourney.df2.rds") 
+str(tourney.df2)
+```
+
+Definition of Adjusted Win Percentage:
+
+Home Wins and Away Losses are weighted at 0.6.
+
+Neutral results are weighted at 1.
+
+Home Losses and Away Wins are weighted at 1.4.
+
+Eg Adjusted Win Percentage of:
+
+2 Home Wins
+
+1 Away Loss
+
+1 Home Loss
+
+= (2x0.6) / (2x0.6 + 1x0.6 + 1x1.4)
+
+= 37.5% (but their Win Percentage is 50%)
+
+Let's represent this definition as a function for a given set of matches.
+
+```{r}
+calculate.adj.win.percentage <- function(teamID, regular.df){
+  
+  #neutral wins and losses
+  neutral.matches.df <- regular.df[as.character(regular.df$WLoc) == "N",]
+  neutral.wins <- sum(neutral.matches.df$WTeamID == teamID)
+  neutral.losses <- sum(neutral.matches.df$LTeamID == teamID)
+  
+  #home and away wins
+  win.matches <- regular.df[regular.df$WTeamID == teamID,]
+  away.wins <- sum(as.character(win.matches$WLoc) == "A")
+  home.wins <- sum(as.character(win.matches$WLoc) == "H")
+  
+  #home and away losses
+  loss.matches <- regular.df[regular.df$LTeamID == teamID,]
+  home.losses <- sum(as.character(loss.matches$WLoc) == "A")
+  away.losses <- sum(as.character(loss.matches$WLoc) == "H")
+  
+  #weight the values up
+  away.wins <- away.wins*1.4
+  home.wins <- home.wins*0.6
+  home.losses <- home.losses*1.4
+  away.losses <- away.losses*0.6
+  
+  adj.win.pctg <- (neutral.wins+away.wins+home.wins)/(neutral.wins+away.wins+home.wins+neutral.losses+away.losses+home.losses)
+  return(adj.win.pctg)
+}
+```
+
+STEP ONE:
+
+Calculate Adjusted Win Percentage for each team against March Madness teams (if NaN, record as 0%, this is an ASSUMPTION)
+
+```{r}
+wteam.round1.adj.win.percentage <- c()
+lteam.round1.adj.win.percentage <- c()
+for(i in 1:nrow(tourney.df2)){
+  
+  tournament.match <- tourney.df2[i,]
+  tournament.match.year <- tournament.match$Season
+  tournament.match.wteam <- tournament.match$WTeamID
+  tournament.match.lteam <- tournament.match$LTeamID
+  
+  #subset regular.df into the year of tournament match
+  regular.df.year <- regular.df[regular.df$Season == tournament.match.year,]
+  
+  #subset regular.df.year into matches between march madness teams
+
+  tourney.df2.year <- tourney.df2[tourney.df2$Season == tournament.match.year,]
+
+  march.madness.teams <- unique(c(tourney.df2.year$WTeamID,tourney.df2.year$LTeamID))
+
+  regular.df.year.march.teams <- regular.df.year[which(c(regular.df.year$WTeamID %in% march.madness.teams) & c(regular.df.year$LTeamID %in% march.madness.teams)),]
+  
+  #calculate adj.win.wteam
+  wteam.regular.df.year.march.teams <- regular.df.year.march.teams[c(c(regular.df.year.march.teams$WTeamID == tournament.match.wteam) | c(regular.df.year.march.teams$LTeamID == tournament.match.wteam)),]
+
+  adj.win.wteam <- calculate.adj.win.percentage(tournament.match.wteam, wteam.regular.df.year.march.teams)
+  wteam.round1.adj.win.percentage <- c(wteam.round1.adj.win.percentage, adj.win.wteam)
+  
+  #calculate adj.win.lteam
+  lteam.regular.df.year.march.teams <- regular.df.year.march.teams[c(regular.df.year.march.teams$WTeamID == tournament.match.lteam) | c(regular.df.year.march.teams$LTeamID == tournament.match.lteam),]
+
+  adj.win.lteam <- calculate.adj.win.percentage(tournament.match.lteam, lteam.regular.df.year.march.teams)
+  lteam.round1.adj.win.percentage <- c(lteam.round1.adj.win.percentage, adj.win.lteam)
+}
+
+unique(wteam.round1.adj.win.percentage)
+unique(lteam.round1.adj.win.percentage)
+
+lteam.round1.adj.win.percentage <- replace(lteam.round1.adj.win.percentage, which(is.nan(lteam.round1.adj.win.percentage)), 0)
+
+unique(lteam.round1.adj.win.percentage)
+```
+
+STEP TWO:
+
+Calculate Adjusted Win Percentage for each team against teams seeded 1 to 8 (if NaN, record as 0%, this is an ASSUMPTION)
+
+```{r}
+wteam.round2.adj.win.percentage <- c()
+lteam.round2.adj.win.percentage <- c()
+
+for(i in 1:nrow(tourney.df2)){
+  
+  tournament.match <- tourney.df2[i,]
+  tournament.match.year <- tournament.match$Season
+  tournament.match.wteam <- tournament.match$WTeamID
+  tournament.match.lteam <- tournament.match$LTeamID
+  
+  #subset regular.df into the year of tournament match
+  regular.df.year <- regular.df[regular.df$Season == tournament.match.year,]
+  
+  #subset regular.df.year into matches between march madness teams seeded 1 to 8
+  tourney.df2.year <- tourney.df2[tourney.df2$Season == tournament.match.year,]
+  
+  wteamID.of.1to8seeds <- tourney.df2.year$WTeamID[tourney.df2.year$wteam.seeds <= 8]
+  lteamID.of.1to8seeds <- tourney.df2.year$LTeamID[tourney.df2.year$lteam.seeds <= 8]
+  teams.1to8seeds <- unique(c(wteamID.of.1to8seeds, lteamID.of.1to8seeds))
+  
+  regular.df.year.1to8seeds <- regular.df.year[which(c(regular.df.year$WTeamID %in% teams.1to8seeds) & c(regular.df.year$LTeamID %in% teams.1to8seeds)),]
+  
+  #calculate adj.win.wteam
+  wteam.regular.df.year.1to8seeds <- regular.df.year.1to8seeds[c(c(regular.df.year.1to8seeds$WTeamID == tournament.match.wteam) | c(regular.df.year.1to8seeds$LTeamID == tournament.match.wteam)),]
+
+  adj.win.wteam <- calculate.adj.win.percentage(tournament.match.wteam, wteam.regular.df.year.march.teams)
+  wteam.round2.adj.win.percentage <- c(wteam.round2.adj.win.percentage, adj.win.wteam)
+  
+  #calculate adj.win.lteam
+  lteam.regular.df.year.1to8seeds <- regular.df.year.1to8seeds[c(c(regular.df.year.1to8seeds$WTeamID == tournament.match.lteam) | c(regular.df.year.1to8seeds$LTeamID == tournament.match.lteam)),]
+
+  adj.win.lteam <- calculate.adj.win.percentage(tournament.match.lteam, lteam.regular.df.year.march.teams)
+  lteam.round2.adj.win.percentage <- c(lteam.round2.adj.win.percentage, adj.win.lteam)
+  
+}
+
+unique(wteam.round2.adj.win.percentage)
+table(wteam.round2.adj.win.percentage)
+unique(lteam.round2.adj.win.percentage)
+table(lteam.round2.adj.win.percentage)
+```
+
+We notice the AdjWin% metric against teams seeded from 1 to 8 has too much missing data. Therefore, use AdjWin% metric against teams that reached March Madness for the model.
+
+```{r}
+tourney.df3 <- cbind.data.frame(tourney.df2, wteam.round1.adj.win.percentage, lteam.round1.adj.win.percentage)
+str(tourney.df3)
+saveRDS(tourney.df3, "tourney.df3.rds")
+```

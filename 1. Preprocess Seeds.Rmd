@@ -1,0 +1,47 @@
+---
+title: "Untitled"
+output: html_document
+---
+
+```{r}
+seeds.df <- read.csv("./womens-machine-learning-competition-2019/WDataFiles/WNCAATourneySeeds.csv")
+str(seeds.df)
+seeds.df <- seeds.df[seeds.df$Season >= 2010,] #to match tourney.df
+
+tourney.df <- read.csv("./womens-machine-learning-competition-2019/WDataFiles/WNCAATourneyDetailedResults.csv")
+str(tourney.df)
+```
+
+```{r}
+wteam.seeds <- c()
+lteam.seeds <- c()
+for(i in 1:nrow(tourney.df)){
+  
+  tournament.match <- tourney.df[i,]
+  tournament.match.year <- tournament.match$Season
+  tournament.match.wteam <- tournament.match$WTeamID
+  tournament.match.lteam <- tournament.match$LTeamID
+  
+  #Find seed of wteam going into tournament
+  seeds.df.year <- seeds.df[seeds.df$Season == tournament.match.year,]
+  seeds.df.year.wteam <- seeds.df.year[seeds.df.year$TeamID == tournament.match.wteam,]
+  wteam.seed <- as.character(tail(seeds.df.year.wteam$Seed, 1))
+  wteam.seed <- as.integer(substr(wteam.seed,2,3))
+  wteam.seeds <- c(wteam.seeds, wteam.seed)
+  
+  
+  #Find seed of lteam going into tournament
+  seeds.df.year.lteam <- seeds.df.year[seeds.df.year$TeamID == tournament.match.lteam,]
+  lteam.seed <- as.character(tail(seeds.df.year.lteam$Seed, 1))
+  lteam.seed <- as.integer(substr(lteam.seed,2,3))
+  lteam.seeds <- c(lteam.seeds, lteam.seed)
+}
+
+str(wteam.seeds)
+str(lteam.seeds)
+```
+
+```{r}
+tourney.df2 <- cbind.data.frame(tourney.df, wteam.seeds, lteam.seeds)
+saveRDS(tourney.df2, "tourney.df2.rds")
+```
