@@ -3,7 +3,7 @@
 Data folder named as "womens-machine-learning-competition-2019" is available for Kagglers with link below:
 https://www.kaggle.com/c/womens-machine-learning-competition-2019/data
 
-Scripts to create "results.metrics.df.rds" is available on request for some parties.
+"results.metrics.df.rds" can be created by running the four process files in order from "1." to "4."
 
 # Glossary of metrics:
 
