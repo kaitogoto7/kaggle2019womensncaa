@@ -1,3 +1,8 @@
+This is my solution to the 2019 Women's NCAA Kaggle Competition. I won a Solo Silver Medal:
+https://www.kaggle.com/kaito510/competitions
+
+I assumed that all 1st, 2nd and 3rd seed teams will win their first round match because my probabilities are clipped from 0.025 to 0.975 and teams seeded from 1 to 3 has won their first round match 299 out of the last 300 historical matches (i.e. much greater than 0.975 of the time). This is the only set of overrides I used.
+
 # Resources for kaggle2019womensncaa respository:
 
 Data folder named as "womens-machine-learning-competition-2019" is available for Kagglers with link below:
@@ -6,8 +11,6 @@ https://www.kaggle.com/c/womens-machine-learning-competition-2019/data
 "results.metrics.df.rds" can be created by running the four process files in order from "1." to "4."
 
 "gradientBoost50.025.csv" (the competition submission file) can be created by running "8. Stage2 submission.Rmd"
-
-I assumed that all 1st, 2nd and 3rd seed teams will win their first round match because my probabilities are clipped from 0.025 to 0.975 and teams seeded from 1 to 3 has won their first round match 299 out of the last 300 historical matches (i.e. much greater than 0.975 of the time).
 
 # Glossary of metrics:
 
