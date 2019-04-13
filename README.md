@@ -3,7 +3,7 @@ https://www.kaggle.com/kaito510/competitions
 
 I assumed that all 1st, 2nd and 3rd seed teams will win their first round match because my probabilities are clipped from 0.025 to 0.975 and teams seeded from 1 to 3 has won their first round match 299 out of the last 300 historical matches (i.e. much greater than 0.975 of the time). This is the only set of overrides I made.
 
-# Resources for kaggle2019womensncaa respository:
+# Utilisation method for this respository:
 
 Data folder named as "womens-machine-learning-competition-2019" is available for Kagglers with link below:
 https://www.kaggle.com/c/womens-machine-learning-competition-2019/data
