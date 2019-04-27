@@ -2,7 +2,7 @@ This repository is my solution to the 2019 Women's NCAA Kaggle Competition. I wo
 
 My Kaggle profile: https://www.kaggle.com/kaito510/competitions
 
-I assumed that all 1st, 2nd and 3rd seed teams will win their first round match because my probabilities are clipped from 0.025 to 0.975 and teams seeded from 1 to 3 has won their first round match 299 out of the last 300 historical matches (i.e. much greater than 0.975 of the time). This is the only set of overrides I made.
+I assumed that all 1st, 2nd and 3rd seed teams will win their first round match because my probabilities are clipped from 0.025 to 0.975 and teams seeded from 1 to 3 has won their first round match 299 out of the last 300 historical matches (i.e. much greater than 0.975 of the time). This is the only set of overrides I made. Therefore, my model had a 3.9% chance of being eliminated from the competition based on the simple calculation of 1 - (299/300)^12.
 
 # How to use this respository:
 
