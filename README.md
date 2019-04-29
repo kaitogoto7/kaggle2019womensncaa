@@ -8,8 +8,7 @@ I assumed that all 1st, 2nd and 3rd seed teams will win their first round match 
 
 Data folder named as "womens-machine-learning-competition-2019" is available for Kagglers with link below:
 https://www.kaggle.com/c/womens-machine-learning-competition-2019/data
-
-"results.metrics.df.rds" can be created by running the four process files in order from "1." to "4."
+ "results.metrics.df.rds" can be created by running the four process files in order from "1." to "4." after downloading "womens-machine-learning-competition-2019".
 
 "gradientBoost50.025.csv" (the competition submission file) can be created by running "8. Stage2 submission.Rmd"
 
