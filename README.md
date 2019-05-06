@@ -6,9 +6,11 @@ I assumed that all 1st, 2nd and 3rd seed teams will win their first round match 
 
 # How to use this respository:
 
-Data folder named as "womens-machine-learning-competition-2019" is available for Kagglers with link below:
+Data folder named as "womens-machine-learning-competition-2019" is available for Kagglers with the following link:
 https://www.kaggle.com/c/womens-machine-learning-competition-2019/data
- "results.metrics.df.rds" can be re-created by running the four process files in order from "1." to "4." after downloading "womens-machine-learning-competition-2019".
+
+"results.metrics.df.rds" can be re-created by running the four process files in order from "1." to "4." after downloading 
+"womens-machine-learning-competition-2019".
 
 "gradientBoost50.025.csv" (the competition submission file minus overrides) can be re-created by running "8. Stage2 submission.Rmd" directly after cloaning.
 
